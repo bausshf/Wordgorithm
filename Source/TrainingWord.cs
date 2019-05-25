@@ -12,6 +12,16 @@ namespace Wordgorithm
     internal class TrainingWord
     {
         /// <summary>
+        /// The next id of a training word.
+        /// </summary>
+        private static ulong _nextId;
+
+        /// <summary>
+        /// The id of the training word.
+        /// </summary>
+        private ulong _id;
+
+        /// <summary>
         /// Createsa  new training word.
         /// </summary>
         /// <param name="word">The word.</param>
@@ -22,7 +32,12 @@ namespace Wordgorithm
             DefaultEndWord = defaultEndWord;
 
             PostWords = new Dictionary<string, WordInstance>();
+
+            _id = _nextId;
+            _nextId++;
         }
+
+        internal ulong Id { get { return _id; } }
 
         /// <summary>
         /// Gets the raw word.

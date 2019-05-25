@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -152,6 +153,247 @@ namespace Wordgorithm
             var sortedWords = _trainingData.Where(w => !_symbolHashes.Contains(w.Key) || w.Value.SymbolType == SymbolType.Wrapper).OrderByDescending(td => td.Value.Weight).Take(Math.Min(_trainingData.Count, 10000)).ToList();
 
             return sortedWords[WordRand.Next(0, sortedWords.Count)].Value;
+        }
+
+        public void LoadModel(string modelFile)
+        {
+            if (!File.Exists(modelFile))
+            {
+                return;
+            }
+
+            using (var fs = new FileStream(modelFile, FileMode.Open))
+            {
+                using (var br = new BinaryReader(fs))
+                {
+                    // Symbols
+                    var endSymbolsCount = br.ReadUInt64();
+                    var endSeparatorSymbolsCount = br.ReadUInt64();
+                    var spacingSymbolsCount = br.ReadUInt64();
+                    var separatorSymbolsCount = br.ReadUInt64();
+                    var combinatorSymbolsCount = br.ReadUInt64();
+                    var wrapperSymbolsCount = br.ReadUInt64();
+
+                    var endSymbols = new List<string>();
+
+                    for (uint i = 0; i < endSymbolsCount; i++)
+                    {
+                        var symbolLength = br.ReadUInt32();
+                        var buffer = br.ReadBytes((int)symbolLength);
+
+                        endSymbols.Add(Encoding.Unicode.GetString(buffer));
+                    }
+
+                    var endSeparatorSymbols = new List<string>();
+
+                    for (uint i = 0; i < endSeparatorSymbolsCount; i++)
+                    {
+                        var symbolLength = br.ReadUInt32();
+                        var buffer = br.ReadBytes((int)symbolLength);
+
+                        endSeparatorSymbols.Add(Encoding.Unicode.GetString(buffer));
+                    }
+
+                    var spacingSymbols = new List<string>();
+
+                    for (uint i = 0; i < spacingSymbolsCount; i++)
+                    {
+                        var symbolLength = br.ReadUInt32();
+                        var buffer = br.ReadBytes((int)symbolLength);
+
+                        spacingSymbols.Add(Encoding.Unicode.GetString(buffer));
+                    }
+
+                    var separatorSymbols = new List<string>();
+
+                    for (uint i = 0; i < separatorSymbolsCount; i++)
+                    {
+                        var symbolLength = br.ReadUInt32();
+                        var buffer = br.ReadBytes((int)symbolLength);
+
+                        separatorSymbols.Add(Encoding.Unicode.GetString(buffer));
+                    }
+
+                    var combinatorSymbols = new List<string>();
+
+                    for (uint i = 0; i < combinatorSymbolsCount; i++)
+                    {
+                        var symbolLength = br.ReadUInt32();
+                        var buffer = br.ReadBytes((int)symbolLength);
+
+                        combinatorSymbols.Add(Encoding.Unicode.GetString(buffer));
+                    }
+
+                    var wrapperSymbols = new List<string>();
+
+                    for (uint i = 0; i < wrapperSymbolsCount; i++)
+                    {
+                        var symbolLength = br.ReadUInt32();
+                        var buffer = br.ReadBytes((int)symbolLength);
+
+                        wrapperSymbols.Add(Encoding.Unicode.GetString(buffer));
+                    }
+
+                    // Training Data
+                    var trainingDataCount = br.ReadUInt64();
+
+                    var trainingData = new Dictionary<ulong, WordInstance>();
+
+                    var trainingIds = new Dictionary<ulong, List<ulong>>();
+
+                    for (ulong i = 0; i < trainingDataCount; i++)
+                    {
+                        var weight = br.ReadInt32();
+                        var symbolType = (SymbolType)br.ReadInt32();
+                        var hasSymbolWrapperEnd = br.ReadByte() == 1;
+                        string symbolWrapperEnd = null;
+
+                        if (hasSymbolWrapperEnd)
+                        {
+                            var symbolWrapperEndCount = br.ReadUInt32();
+                            var symbolWrapperBuffer = br.ReadBytes((int)symbolWrapperEndCount);
+
+                            symbolWrapperEnd = Encoding.Unicode.GetString(symbolWrapperBuffer);
+                        }
+
+                        var wordId = br.ReadUInt64();
+
+                        var wordLength = br.ReadUInt32();
+                        var wordBuffer = br.ReadBytes((int)wordLength);
+                        var word = symbolWrapperEnd = Encoding.Unicode.GetString(wordBuffer);
+
+                        var postWordCount = br.ReadUInt64();
+
+                        var postWordIds = new List<ulong>();
+
+                        for (ulong j = 0; j < postWordCount; j++)
+                        {
+                            postWordIds.Add(br.ReadUInt64());
+                        }
+                        
+                        var trainingWord = new WordInstance(weight, new TrainingWord(word, _defaultEndSymbol), symbolType, symbolWrapperEnd);
+
+                        trainingData.Add(wordId, trainingWord);
+                        trainingIds.Add(wordId, postWordIds);
+                    }
+
+                    foreach (var instance in trainingData)
+                    {
+                        var ids = trainingIds[instance.Key];
+
+                        foreach (var id in ids)
+                        {
+                            WordInstance wordInstance;
+                            if (trainingData.TryGetValue(id, out wordInstance))
+                            {
+                                instance.Value.Word.PostWords.Add(wordInstance.Word.Word, wordInstance);
+                            }
+                        }
+
+                        _trainingData.Add(instance.Value.Word.Word, instance.Value);
+                    }
+                }
+            }
+        }
+
+        public void SaveModel(string modelFile)
+        {
+            if (File.Exists(modelFile))
+            {
+                if (File.Exists("__backupModel.dat"))
+                {
+                    File.Delete("__backupModel.dat");
+                }
+
+                File.Copy(modelFile, "__backupModel.dat");
+                File.Delete(modelFile);
+            }
+
+            using (var fs = new FileStream(modelFile, FileMode.CreateNew))
+            {
+                using (var bw = new BinaryWriter(fs))
+                {
+                    // Symbols
+                    bw.Write((ulong)_endSymbols.Count);
+                    bw.Write((ulong)_endSeparatorSymbols.Count);
+                    bw.Write((ulong)_spacingSymbols.Count);
+                    bw.Write((ulong)_separatorSymbols.Count);
+                    bw.Write((ulong)_combinatorSymbols.Count);
+                    bw.Write((ulong)_wrapperSymbols.Count);
+                    
+                    foreach (var symbol in _endSymbols)
+                    {
+                        var buffer = Encoding.Unicode.GetBytes(symbol);
+                        bw.Write((uint)buffer.Length);
+                        bw.Write(buffer);
+                    }
+
+                    foreach (var symbol in _endSeparatorSymbols)
+                    {
+                        var buffer = Encoding.Unicode.GetBytes(symbol);
+                        bw.Write((uint)buffer.Length);
+                        bw.Write(buffer);
+                    }
+
+                    foreach (var symbol in _spacingSymbols)
+                    {
+                        var buffer = Encoding.Unicode.GetBytes(symbol);
+                        bw.Write((uint)buffer.Length);
+                        bw.Write(buffer);
+                    }
+
+                    foreach (var symbol in _separatorSymbols)
+                    {
+                        var buffer = Encoding.Unicode.GetBytes(symbol);
+                        bw.Write((uint)buffer.Length);
+                        bw.Write(buffer);
+                    }
+
+                    foreach (var symbol in _combinatorSymbols)
+                    {
+                        var buffer = Encoding.Unicode.GetBytes(symbol);
+                        bw.Write((uint)buffer.Length);
+                        bw.Write(buffer);
+                    }
+
+                    foreach (var symbol in _wrapperSymbols)
+                    {
+                        var buffer = Encoding.Unicode.GetBytes(symbol);
+                        bw.Write((uint)buffer.Length);
+                        bw.Write(buffer);
+                    }
+
+                    // Training Data
+                    bw.Write((ulong)_trainingData.Count);
+
+                    foreach (var word in _trainingData.Values)
+                    {
+                        bw.Write((int)word.Weight);
+                        bw.Write((int)word.SymbolType);
+                        bw.Write((byte)(!string.IsNullOrWhiteSpace(word.SymbolWrapperEnd) ? 1 : 0));
+
+                        if (!string.IsNullOrWhiteSpace(word.SymbolWrapperEnd))
+                        {
+                            var symbolBuffer = Encoding.Unicode.GetBytes(word.SymbolWrapperEnd);
+                            bw.Write((uint)symbolBuffer.Length);
+                            bw.Write(symbolBuffer);
+                        }
+
+                        bw.Write((ulong)word.Word.Id);
+
+                        var buffer = Encoding.Unicode.GetBytes(word.Word.Word);
+                        bw.Write((uint)buffer.Length);
+                        bw.Write(buffer);
+
+                        bw.Write((ulong)word.Word.PostWords.Count);
+
+                        foreach (var postWord in word.Word.PostWords.Values)
+                        {
+                            bw.Write((ulong)postWord.Word.Id);
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>

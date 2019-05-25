@@ -9,35 +9,35 @@ namespace Wordgorithm
     /// <summary>
     /// Enumeration of symbol types.
     /// </summary>
-    public enum SymbolType
+    public enum SymbolType : int
     {
         /// <summary>
         /// A word and not a symbol.
         /// </summary>
-        None,
+        None = 0,
         /// <summary>
         /// An ending symbol.
         /// </summary>
-        End,
+        End = 1,
         /// <summary>
         /// An ending symbol for separators.
         /// </summary>
-        EndSeparator,
+        EndSeparator = 2,
         /// <summary>
         /// A spacing symbol.
         /// </summary>
-        Spacing,
+        Spacing = 3,
         /// <summary>
         /// A separator symbol.
         /// </summary>
-        Separator,
+        Separator = 4,
         /// <summary>
         /// A combinator symbol.
         /// </summary>
-        Combinator,
+        Combinator = 5,
         /// <summary>
         /// A wrapper.
         /// </summary>
-        Wrapper
+        Wrapper = 6
     }
 }
