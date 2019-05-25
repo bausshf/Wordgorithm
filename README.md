@@ -33,6 +33,18 @@ trainer.Train(new[]
 });
 ```
 
+### Loading A Model
+
+```
+trainer.LoadModel("model.dat");
+```
+
+### Saving A Model
+
+```
+trainer.SaveModel("model.dat");
+```
+
 ## Generating
 
 ```
