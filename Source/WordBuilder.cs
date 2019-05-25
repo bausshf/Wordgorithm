@@ -170,7 +170,7 @@ namespace Wordgorithm
             do
             {
                 brain = Next(selectUntilEndSymbol, includeEndSymbol);
-            } while (!EndOfSequence || _wordSequence.Count(w => w.SymbolType == SymbolType.None) > _maxWords);
+            } while (!EndOfSequence && _wordSequence.Count(w => w.SymbolType == SymbolType.None) < _maxWords);
         }
 
         /// <summary>
