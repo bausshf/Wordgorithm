@@ -36,7 +36,7 @@ trainer.Train(new[]
 ## Generating
 
 ```
-var builder = trainer.CreateBuilder(5, 25);
+var builder = trainer.CreateBuilder(minWords: 5, maxWords: 25);
 
 var result = builder.ToString();
 
